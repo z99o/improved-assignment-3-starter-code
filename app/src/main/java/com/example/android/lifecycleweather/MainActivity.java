@@ -47,7 +47,10 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
      *
      *   https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_configuration_properties
      *
-     * Alternatively, you can just hard-code your API key below 🤷‍.
+     * Alternatively, you can just hard-code your API key below 🤷‍.  If you do hard code your API
+     * key below, make sure to get rid of the following line (line 18) in build.gradle:
+     *
+     *   buildConfigField("String", "OPENWEATHER_API_KEY", OPENWEATHER_API_KEY)
      */
     private static final String OPENWEATHER_APPID = BuildConfig.OPENWEATHER_API_KEY;
 
@@ -128,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
                     public void onResponse(String response) {
                         FiveDayForecast forecast =
                                 OpenWeatherUtils.parseFiveDayForecastResponse(response);
-                        forecastAdapter.updateForecastData(forecast.getForecastDataList());
+                        forecastAdapter.updateForecastData(forecast);
                         forecastCity = forecast.getForecastCity();
 
                         forecastListRV.setVisibility(View.VISIBLE);

@@ -3,12 +3,11 @@ package com.example.android.lifecycleweather.utils;
 import android.net.Uri;
 
 import com.example.android.lifecycleweather.data.FiveDayForecast;
+import com.example.android.lifecycleweather.data.ForecastCity;
 import com.example.android.lifecycleweather.data.ForecastData;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.annotations.SerializedName;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.TimeZone;
 
@@ -18,11 +17,8 @@ public class OpenWeatherUtils {
     private static final String FIVE_DAY_FORECAST_UNITS_PARAM = "units";
     private static final String FIVE_DAY_FORECAST_APPID_PARAM = "appid";
 
-    private final static String FIVE_DAY_FORECAST_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
-    private final static String FIVE_DAY_FORECAST_TIMEZONE = "UTC";
+    private final static String FIVE_DAY_FORECAST_DEFAULT_TIMEZONE = "UTC";
     private final static String TIMEZONE_OFFSET_FORMAT_STR = "GMT%0+3d:%02d";
-
-    private final static String FIVE_DAY_FORECAST_ICON_URL_FORMAT_STR = "https://openweathermap.org/img/wn/%s@4x.png";
 
     /**
      * Builds a URL to query the OpenWeather API to fetch the 5 day/3 hour forecast for a specified
@@ -46,151 +42,55 @@ public class OpenWeatherUtils {
     }
 
     /**
+     * Converts a Unix epoch time (e.g. `dt` from the OpenWeather API) plus a timezone offset
+     * to a calendar with the correct timezone for the specified offset.
+     *
+     * @param epoch A Unix epoch timestamp, in seconds.
+     * @param tzOffsetSeconds A timezone offset, in seconds.
+     *
+     * @return Returns a Calendar object representing the time specified by `epoch`, with the
+     * timezone correctly set to the one specified by `tzOffsetSeconds`.
+     */
+    public static Calendar dateFromEpochAndTZOffset(int epoch, int tzOffsetSeconds) {
+        Calendar date = Calendar.getInstance(TimeZone.getTimeZone(FIVE_DAY_FORECAST_DEFAULT_TIMEZONE));
+        date.setTimeInMillis(epoch * 1000L);
+        int tzOffsetHours = tzOffsetSeconds / 3600;
+        int tzOffsetMin = (Math.abs(tzOffsetSeconds) % 3600) / 60;
+        String localTimezoneId = String.format(TIMEZONE_OFFSET_FORMAT_STR, tzOffsetHours, tzOffsetMin);
+        date.setTimeZone(TimeZone.getTimeZone(localTimezoneId));
+        return date;
+    }
+
+    /**
      * Parses the JSON response from the OpenWeather API's 5 day/3 hour forecast API.
      *
-     * @param dailyForecastJson The raw JSON response from the OpenWeather 5 day/3 hour API.
+     * @param fiveDayForecastJson The raw JSON response from the OpenWeather 5 day/3 hour API.
      *
      * @return Returns a FiveDayForecast object representing the fetched forecast.
      */
-    public static FiveDayForecast parseFiveDayForecastResponse(String dailyForecastJson) {
-        Gson gson = new GsonBuilder().setDateFormat(FIVE_DAY_FORECAST_DATE_FORMAT).create();
-        OpenWeatherForecastResponse forecast = gson.fromJson(
-                dailyForecastJson,
-                OpenWeatherForecastResponse.class
-        );
-        ArrayList<ForecastData> forecastDataList = new ArrayList<>();
-        for (OpenWeatherForecastListItem item : forecast.forecastList) {
-            forecastDataList.add(item.toForecastData(forecast.city.timezoneOffsetTotalSec));
-        }
-        return new FiveDayForecast(forecastDataList, forecast.city.name, forecast.city.coord.lat,
-                forecast.city.coord.lon);
-    }
-
-    /**********************************************************************************************
-     **
-     ** The classes below are used in conjunction with Gson to parse the OpenWeather API's JSON
-     ** response from the 5 day/3 hour forecast API.  Don't modify these classes unless you want
-     ** to change the data being used from the OpenWeather API.
-     **
-     **********************************************************************************************/
-
-    /**
-     * This class represents the top-level response from the OpenWeather 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastResponse {
-        @SerializedName("list")
-        public ArrayList<OpenWeatherForecastListItem> forecastList;
-
-        public OpenWeatherForecastCity city;
-    }
-
-    /**
-     * This class represents the `city` field in the response from the OpenWeather 5 day/3 hour
-     * forecast API.
-     */
-    private static class OpenWeatherForecastCity {
-        public String name;
-        public OpenWeatherForecastCityCoords coord;
-
-        @SerializedName("timezone")
-        public int timezoneOffsetTotalSec;
-    }
-
-    /**
-     * This class represents the `city.coord` field in the response from the OpenWeather
-     * 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastCityCoords {
-        public double lat;
-        public double lon;
-    }
-
-    /**
-     * This class represents one item in the the `list` field in the response from the OpenWeather
-     * 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastListItem {
-        public OpenWeatherForecastListItemMain main;
-        public ArrayList<OpenWeatherForecastListItemWeather> weather;
-        public OpenWeatherForecastListItemClouds clouds;
-        public OpenWeatherForecastListItemWind wind;
-        public double pop;
-
-        @SerializedName("dt")
-        public long timestamp;
-
-        /**
-         * This method is used to generate a `ForecastData` object from this
-         * `OpenWeatherForecastListItem` object.
+    public static FiveDayForecast parseFiveDayForecastResponse(String fiveDayForecastJson) {
+        /*
+         * In the Gson parsing below, custom deserializers are registered to parse elements of the
+         * OpenWeather API's JSON response directly into objects of classes whose structures do
+         * not directly match the JSON string.
          *
-         * @param timezoneOffsetTotalSec The timezone offset in seconds returned by the OpenWeather
-         *                               API.
+         * Note that a custom `Gson` object can be passed into Retrofit's
+         * `GsonConverterFactory.create()`, like so:
+         *
+         *    Gson gson = new GsonBuilder().
+         *        ...
+         *        .create();
+         *    Retrofit retrofit = new Retrofit.Builder()
+         *        .addConverterFactory(GsonConverterFactory.create(gson)
+         *        ...
+         *        .build();
+         *
+         * This means you can use these custom deserializers in conjunction with Retrofit, too.
          */
-        public ForecastData toForecastData(int timezoneOffsetTotalSec) {
-            /*
-             * Convert timezone seconds offset to GMT+/-hours:minutes offset string and convert
-             * forecast time to correct timezone.
-             */
-            Calendar date = Calendar.getInstance(TimeZone.getTimeZone(FIVE_DAY_FORECAST_TIMEZONE));
-            date.setTimeInMillis(this.timestamp * 1000L);
-            int timezoneOffsetHours = timezoneOffsetTotalSec / 3600;
-            int timezoneOffsetMin = (Math.abs(timezoneOffsetTotalSec) % 3600) / 60;
-            String localTimezoneId = String.format(TIMEZONE_OFFSET_FORMAT_STR, timezoneOffsetHours,
-                    timezoneOffsetMin);
-            date.setTimeZone(TimeZone.getTimeZone(localTimezoneId));
-
-            OpenWeatherForecastListItemWeather weatherItem = this.weather.get(0);
-
-            return new ForecastData(
-                    date,
-                    (int)Math.round(this.main.highTemp),
-                    (int)Math.round(this.main.lowTemp),
-                    (int)Math.round(this.pop * 100),
-                    this.clouds.coveragePercent,
-                    (int)Math.round(this.wind.speed),
-                    this.wind.deg,
-                    weatherItem.description,
-                    String.format(FIVE_DAY_FORECAST_ICON_URL_FORMAT_STR, weatherItem.icon)
-            );
-        }
-    }
-
-    /**
-     * This class represents the `list.main` field in the response from the OpenWeather
-     * 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastListItemMain {
-        @SerializedName("temp_min")
-        public double lowTemp;
-
-        @SerializedName("temp_max")
-        public double highTemp;
-    }
-
-    /**
-     * This class represents one item in the the `list.weather` field in the response from the
-     * OpenWeather 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastListItemWeather {
-        public String description;
-        public String icon;
-    }
-
-    /**
-     * This class represents the `list.clouds` field in the response from the OpenWeather
-     * 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastListItemClouds {
-        @SerializedName("all")
-        public int coveragePercent;
-    }
-
-    /**
-     * This class represents the `list.wind` field in the response from the OpenWeather
-     * 5 day/3 hour forecast API.
-     */
-    private static class OpenWeatherForecastListItemWind {
-        public double speed;
-        public int deg;
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(ForecastData.class, new ForecastData.JsonDeserializer())
+                .registerTypeAdapter(ForecastCity.class, new ForecastCity.JsonDeserializer())
+                .create();
+        return gson.fromJson(fiveDayForecastJson, FiveDayForecast.class);
     }
 }

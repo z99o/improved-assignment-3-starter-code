@@ -1,15 +1,19 @@
 package com.example.android.lifecycleweather.data;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.ArrayList;
 
 public class FiveDayForecast {
+    @SerializedName("list")
     private ArrayList<ForecastData> forecastDataList;
+
+    @SerializedName("city")
     private ForecastCity forecastCity;
 
-    public FiveDayForecast(ArrayList<ForecastData> forecastDataList, String cityName,
-                           double cityLatitude, double cityLongitude) {
-        this.forecastDataList = forecastDataList;
-        this.forecastCity = new ForecastCity(cityName, cityLatitude, cityLongitude);
+    public FiveDayForecast() {
+        this.forecastDataList = null;
+        this.forecastCity = null;
     }
 
     public ArrayList<ForecastData> getForecastDataList() {

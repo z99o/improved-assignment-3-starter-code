@@ -8,15 +8,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.example.android.lifecycleweather.data.FiveDayForecast;
 import com.example.android.lifecycleweather.data.ForecastData;
+import com.example.android.lifecycleweather.utils.OpenWeatherUtils;
 
-import java.util.ArrayList;
+import java.util.Calendar;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastItemViewHolder> {
-    private ArrayList<ForecastData> forecastDataList;
+    private FiveDayForecast fiveDayForecast;
     private OnForecastItemClickListener onForecastItemClickListener;
 
     public interface OnForecastItemClickListener {
@@ -24,7 +26,6 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
     }
 
     public ForecastAdapter(OnForecastItemClickListener onForecastItemClickListener) {
-        this.forecastDataList = new ArrayList<>();
         this.onForecastItemClickListener = onForecastItemClickListener;
     }
 
@@ -38,17 +39,21 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
 
     @Override
     public void onBindViewHolder(@NonNull ForecastItemViewHolder holder, int position) {
-        holder.bind(this.forecastDataList.get(position));
+        holder.bind(this.fiveDayForecast.getForecastDataList().get(position));
     }
 
-    public void updateForecastData(ArrayList<ForecastData> forecastDataList) {
-        this.forecastDataList = forecastDataList;
+    public void updateForecastData(FiveDayForecast fiveDayForecast) {
+        this.fiveDayForecast = fiveDayForecast;
         notifyDataSetChanged();
     }
 
     @Override
     public int getItemCount() {
-        return this.forecastDataList.size();
+        if (this.fiveDayForecast == null || this.fiveDayForecast.getForecastDataList() == null) {
+            return 0;
+        } else {
+            return this.fiveDayForecast.getForecastDataList().size();
+        }
     }
 
     class ForecastItemViewHolder extends RecyclerView.ViewHolder {
@@ -71,15 +76,21 @@ public class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.Foreca
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    onForecastItemClickListener.onForecastItemClick(forecastDataList.get(getAdapterPosition()));
+                    onForecastItemClickListener.onForecastItemClick(
+                            fiveDayForecast.getForecastDataList().get(getAdapterPosition())
+                    );
                 }
             });
         }
 
         public void bind(ForecastData forecastData) {
             Context ctx = this.itemView.getContext();
-            dateTV.setText(ctx.getString(R.string.forecast_date, forecastData.getDate()));
-            timeTV.setText(ctx.getString(R.string.forecast_time, forecastData.getDate()));
+            Calendar date = OpenWeatherUtils.dateFromEpochAndTZOffset(
+                    forecastData.getEpoch(),
+                    fiveDayForecast.getForecastCity().getTimezoneOffsetSeconds()
+            );
+            dateTV.setText(ctx.getString(R.string.forecast_date, date));
+            timeTV.setText(ctx.getString(R.string.forecast_time, date));
             highTempTV.setText(ctx.getString(R.string.forecast_temp, forecastData.getHighTemp(), "F"));
             lowTempTV.setText(ctx.getString(R.string.forecast_temp, forecastData.getLowTemp(), "F"));
             popTV.setText(ctx.getString(R.string.forecast_pop, forecastData.getPop()));
