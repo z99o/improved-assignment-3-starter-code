@@ -44,6 +44,24 @@ public class ForecastCity implements Serializable {
         return timezoneOffsetSeconds;
     }
 
+    /**
+     * This class is a custom JSON deserializer that can be plugged into Gson to directly parse
+     * parts of the OpenWeather 5-day/3-hour forecast API response into a ForecastCity object.
+     * Specifically, this class can be used to parse the `city` field of the OpenWeather API
+     * response into a ForecastCity object.
+     *
+     * Using a deserializer like this allows for directly mapping deeply nested fields in the API
+     * response into a single, flat object like ForecastCity instead of creating a complex Java
+     * class hierarchy to mimic the structure of the API response.
+     *
+     * The mapping from the fields of the `city` object to the fields of a ForecastCity object are
+     * as follows:
+     *
+     *   city.name --> ForecastCity.name
+     *   city.coord.lat --> ForecastCity.latitude
+     *   city.coord.lon --> ForecastCity.longitude
+     *   city.timezone --> ForecastCity.timezoneOffsetSeconds
+     */
     public static class JsonDeserializer implements com.google.gson.JsonDeserializer<ForecastCity> {
         @Override
         public ForecastCity deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {

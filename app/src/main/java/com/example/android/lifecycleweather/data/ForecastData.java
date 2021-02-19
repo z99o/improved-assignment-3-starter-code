@@ -84,6 +84,29 @@ public class ForecastData implements Serializable {
         return iconUrl;
     }
 
+    /**
+     * This class is a custom JSON deserializer that can be plugged into Gson to directly parse
+     * parts of the OpenWeather 5-day/3-hour forecast API response into a ForecastData object.
+     * Specifically, this class can be used to parse objects in the `list` field of the
+     * OpenWeather API response into a ForecastData object.
+     *
+     * Using a deserializer like this allows for directly mapping deeply nested fields in the API
+     * response into a single, flat object like ForecastData instead of creating a complex Java
+     * class hierarchy to mimic the structure of the API response.
+     *
+     * The mapping from the fields of a `list` object to the fields of a ForecastData object are
+     * as follows:
+     *
+     *   list.dt --> ForecastData.epoch
+     *   list.main.temp_max --> ForecastData.highTemp
+     *   list.main.temp_min --> ForecastData.lowTemp
+     *   list.pop * 100 --> ForecastData.pop
+     *   list.clouds.all --> ForecastData.cloudCoverage
+     *   list.wind.speed --> ForecastData.windSpeed
+     *   list.wind.deg --> ForecastData.windDirDeg
+     *   list.weather[0].description --> ForecastData.description
+     *   list.weather[0].icon --> ForecastData.iconUrl (after plugging icon code into URL pattern)
+     */
     public static class JsonDeserializer implements com.google.gson.JsonDeserializer<ForecastData> {
         @Override
         public ForecastData deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
