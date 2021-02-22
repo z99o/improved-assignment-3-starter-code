@@ -1,15 +1,21 @@
 package com.example.android.lifecycleweather;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -27,6 +33,8 @@ import com.android.volley.toolbox.Volley;
 import com.example.android.lifecycleweather.data.FiveDayForecast;
 import com.example.android.lifecycleweather.data.ForecastCity;
 import com.example.android.lifecycleweather.data.ForecastData;
+import com.example.android.lifecycleweather.data.ForecastViewModel;
+import com.example.android.lifecycleweather.data.Status;
 import com.example.android.lifecycleweather.utils.OpenWeatherUtils;
 
 public class MainActivity extends AppCompatActivity implements ForecastAdapter.OnForecastItemClickListener {
@@ -65,6 +73,9 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
 
     private Toast errorToast;
 
+    private ForecastViewModel mForecastViewModel;
+    private SharedPreferences sharedPreferences;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,12 +91,57 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
         this.forecastListRV.setAdapter(this.forecastAdapter);
 
         this.requestQueue = Volley.newRequestQueue(this);
+        this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        mForecastViewModel = new ViewModelProvider(this)
+                .get(ForecastViewModel.class);
+
+        mForecastViewModel.getSearchResults()
+                .observe(this, new Observer<FiveDayForecast>() {
+                    @Override
+                    public void
+                    onChanged(@Nullable FiveDayForecast fiveDayForecast) {
+                        // Update UI with new search result data...
+                        if(fiveDayForecast == null){
+                            return;
+                        }
+                        Log.d("Results", String.valueOf(fiveDayForecast.getForecastCity()));
+                        forecastCity = fiveDayForecast.getForecastCity();
+                        forecastAdapter.updateForecastData(fiveDayForecast);
+
+                    }
+                });
+
+       mForecastViewModel.getLoadingStatus()
+                .observe(this, new Observer<Status>() {
+                    @Override
+                    public void onChanged(@Nullable Status status) {
+                        switch(status){
+                            case ERROR:
+                                doLoadingError(mForecastViewModel.getLastError());
+                                break;
+                            case LOADING:
+                                doLoadingLoading();
+                                break;
+                            default:
+                                doLoadingSuccess();
+                        }
+                    }
+                });
+
+        this.fetchFiveDayForecast("Corvallis,OR,US", "imperial");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         this.fetchFiveDayForecast("Corvallis,OR,US", "imperial");
     }
 
     @Override
     public void onForecastItemClick(ForecastData forecastData) {
         Intent intent = new Intent(this, ForecastDetailActivity.class);
+
         intent.putExtra(ForecastDetailActivity.EXTRA_FORECAST_DATA, forecastData);
         intent.putExtra(ForecastDetailActivity.EXTRA_FORECAST_CITY, this.forecastCity);
         startActivity(intent);
@@ -103,10 +159,16 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
             case R.id.action_map:
                 viewForecastCityInMap();
                 return true;
+            case R.id.action_settings:
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
+
+
 
     /**
      * This function uses Volley to fetch the 5 day/3 hour forecast from the OpenWeather API for
@@ -120,6 +182,11 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
      *              "imperial", "metric", or "standard".
      */
     private void fetchFiveDayForecast(String city, String units) {
+        String preference_location = sharedPreferences.getString(getString(R.string.pref_location_key),"Corvallis");
+        String preference_units = sharedPreferences.getString(getString(R.string.pref_unit_key),getString(R.string.pref_unit_default));
+        mForecastViewModel.loadSearchResults(preference_location,preference_units,OPENWEATHER_APPID);
+        return;
+        /*
         String forecastUrl = OpenWeatherUtils.buildFiveDayForecastUrl(city, units, OPENWEATHER_APPID);
         Log.d(TAG, "Request URL: " + forecastUrl);
 
@@ -155,7 +222,28 @@ public class MainActivity extends AppCompatActivity implements ForecastAdapter.O
         );
         loadingIndicatorPB.setVisibility(View.VISIBLE);
         this.requestQueue.add(req);
+
+         */
     }
+
+    public void doLoadingSuccess(){
+        forecastListRV.setVisibility(View.VISIBLE);
+        loadingIndicatorPB.setVisibility(View.INVISIBLE);
+        errorMessageTV.setVisibility(View.INVISIBLE);
+    }
+
+    public void doLoadingLoading(){
+        loadingIndicatorPB.setVisibility(View.VISIBLE);
+    }
+
+    public void doLoadingError(String error){
+        errorMessageTV.setText(getString(R.string.loading_error, error));
+        errorMessageTV.setVisibility(View.VISIBLE);
+        loadingIndicatorPB.setVisibility(View.INVISIBLE);
+        forecastListRV.setVisibility(View.INVISIBLE);
+    }
+
+
 
     /**
      * This function uses an implicit intent to view the forecast city in a map.

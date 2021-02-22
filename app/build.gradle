@@ -15,7 +15,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "OPENWEATHER_API_KEY", OPENWEATHER_API_KEY)
+        buildConfigField("String", "OPENWEATHER_API_KEY", '''"1d8f52088d27ed87f12feeb3ed349365"''')
     }
 
     buildTypes {
@@ -39,6 +39,13 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'com.android.volley:volley:1.1.1'
     implementation 'com.github.bumptech.glide:glide:4.11.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.2.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata:2.2.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+
+    implementation 'androidx.preference:preference:1.1.0'
+
 
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'

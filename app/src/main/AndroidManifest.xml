@@ -14,7 +14,10 @@
         <activity
             android:name="com.example.android.lifecycleweather.ForecastDetailActivity"
             android:parentActivityName="com.example.android.lifecycleweather.MainActivity"></activity>
-        <activity android:name="com.example.android.lifecycleweather.MainActivity">
+        <activity android:name=".SettingsActivity"
+            android:parentActivityName=".MainActivity"></activity>
+        <activity android:name="com.example.android.lifecycleweather.MainActivity" android:launchMode="singleTop">>
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

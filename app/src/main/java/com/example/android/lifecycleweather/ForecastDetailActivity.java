@@ -99,6 +99,7 @@ public class ForecastDetailActivity extends AppCompatActivity {
         }
     }
 
+
     /**
      * This method uses an implicit intent to launch the Android Sharesheet to allow the user to
      * share the current forecast.
